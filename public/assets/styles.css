@@ -1,0 +1,395 @@
+:root {
+    color-scheme: light;
+    --bg: #eef3f7;
+    --panel: #ffffff;
+    --line: #dfe7ef;
+    --text: #25313d;
+    --muted: #748292;
+    --blue: #0ea5e9;
+    --blue-dark: #0284c7;
+    --danger: #dc2626;
+    --sidebar: #f8fafc;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+button,
+input,
+select {
+    font: inherit;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.app-shell {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    min-height: 100vh;
+}
+
+.sidebar {
+    background: var(--sidebar);
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 22px 18px;
+}
+
+.brand {
+    align-items: center;
+    display: flex;
+    gap: 12px;
+    font-size: 24px;
+}
+
+.brand-mark {
+    align-items: center;
+    background: var(--blue);
+    border-radius: 8px;
+    color: #fff;
+    display: inline-flex;
+    font-weight: 700;
+    height: 38px;
+    justify-content: center;
+    width: 38px;
+}
+
+.nav {
+    display: grid;
+    gap: 8px;
+}
+
+.nav-item,
+.ghost-button {
+    background: transparent;
+    border: 0;
+    border-radius: 6px;
+    color: var(--text);
+    cursor: pointer;
+    padding: 13px 14px;
+    text-align: left;
+}
+
+.nav-item.active,
+.nav-item:hover,
+.ghost-button:hover {
+    background: #e4edf5;
+}
+
+.logout-button {
+    margin-top: auto;
+}
+
+.workspace {
+    min-width: 0;
+    padding: 28px;
+}
+
+.topbar,
+.section-heading {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.eyebrow {
+    color: var(--muted);
+    font-size: 12px;
+    letter-spacing: 0;
+    margin: 0 0 6px;
+    text-transform: uppercase;
+}
+
+.view-title,
+.auth-copy h1 {
+    margin: 0;
+}
+
+.user-pill {
+    background: #8bc34a;
+    border-radius: 8px;
+    color: #fff;
+    font-weight: 700;
+    min-width: 42px;
+    padding: 12px;
+    text-align: center;
+}
+
+.auth-panel {
+    align-items: stretch;
+    display: grid;
+    gap: 28px;
+    grid-template-columns: minmax(220px, 1fr) 380px;
+    margin-top: 60px;
+}
+
+.auth-copy {
+    align-self: center;
+}
+
+.auth-copy h1 {
+    font-size: 42px;
+    max-width: 560px;
+}
+
+.auth-form,
+.timer-bar,
+.project-form,
+.chart-panel,
+.totals-panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: 0 12px 28px rgba(37, 49, 61, 0.06);
+}
+
+.auth-form {
+    display: grid;
+    gap: 16px;
+    padding: 22px;
+}
+
+.auth-tabs {
+    background: #eef3f7;
+    border-radius: 6px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding: 4px;
+}
+
+.auth-tab {
+    background: transparent;
+    border: 0;
+    border-radius: 5px;
+    cursor: pointer;
+    padding: 10px;
+}
+
+.auth-tab.active {
+    background: #fff;
+    color: var(--blue-dark);
+    font-weight: 700;
+}
+
+label {
+    color: var(--muted);
+    display: grid;
+    gap: 7px;
+    font-size: 14px;
+}
+
+input,
+select {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: var(--text);
+    min-height: 42px;
+    padding: 0 12px;
+    width: 100%;
+}
+
+.primary-button,
+.small-button {
+    background: var(--blue);
+    border: 0;
+    border-radius: 6px;
+    color: #fff;
+    cursor: pointer;
+    font-weight: 700;
+    min-height: 42px;
+    padding: 0 18px;
+}
+
+.primary-button:hover,
+.small-button:hover {
+    background: var(--blue-dark);
+}
+
+.danger-button {
+    background: transparent;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    color: var(--danger);
+    cursor: pointer;
+    min-height: 36px;
+    padding: 0 12px;
+}
+
+.form-message {
+    color: var(--danger);
+    min-height: 20px;
+    margin: 0;
+}
+
+.app-content {
+    margin-top: 26px;
+}
+
+.view {
+    display: none;
+}
+
+.view.active {
+    display: block;
+}
+
+.timer-bar {
+    align-items: center;
+    display: grid;
+    gap: 14px;
+    grid-template-columns: 1fr 230px 140px 120px;
+    padding: 14px;
+}
+
+.timer-display {
+    font-size: 24px;
+    text-align: center;
+}
+
+.timer-button.stop {
+    background: #ef4444;
+}
+
+.section-heading {
+    margin: 28px 0 12px;
+}
+
+.section-heading h2 {
+    margin: 0;
+}
+
+.entries-list,
+.project-list {
+    display: grid;
+    gap: 10px;
+}
+
+.entry-row,
+.project-row {
+    align-items: center;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    display: grid;
+    gap: 14px;
+    padding: 14px 16px;
+}
+
+.entry-row {
+    grid-template-columns: 1fr 210px 110px 80px;
+}
+
+.project-row {
+    grid-template-columns: 24px 1fr 58px 90px 80px;
+}
+
+.project-dot {
+    border-radius: 50%;
+    height: 11px;
+    width: 11px;
+}
+
+.entry-description {
+    color: var(--muted);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.entry-project {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+}
+
+.entry-time {
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.entry-duration {
+    font-size: 20px;
+    font-weight: 700;
+    text-align: right;
+}
+
+.project-form {
+    align-items: center;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: 1fr 58px 150px;
+    margin-bottom: 18px;
+    padding: 14px;
+}
+
+.report-grid {
+    display: grid;
+    gap: 18px;
+    grid-template-columns: minmax(0, 1fr) 320px;
+}
+
+.chart-panel,
+.totals-panel {
+    padding: 18px;
+}
+
+.chart-panel canvas {
+    display: block;
+    max-width: 100%;
+    width: 100%;
+}
+
+.total-row {
+    border-bottom: 1px solid var(--line);
+    display: grid;
+    gap: 8px;
+    grid-template-columns: 14px 1fr auto;
+    padding: 12px 0;
+}
+
+.empty-state {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px dashed #b8c5d2;
+    border-radius: 8px;
+    color: var(--muted);
+    padding: 28px;
+    text-align: center;
+}
+
+@media (max-width: 900px) {
+    .app-shell,
+    .auth-panel,
+    .report-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .sidebar {
+        border-bottom: 1px solid var(--line);
+        border-right: 0;
+    }
+
+    .timer-bar,
+    .entry-row,
+    .project-row,
+    .project-form {
+        grid-template-columns: 1fr;
+    }
+
+    .entry-duration {
+        text-align: left;
+    }
+}

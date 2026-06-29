@@ -1,0 +1,370 @@
+const state = {
+    user: null,
+    projects: [],
+    entries: [],
+    report: [],
+    runningEntry: null,
+    authMode: 'login',
+    activeView: 'tracker',
+};
+
+const els = {
+    authPanel: document.querySelector('#authPanel'),
+    appContent: document.querySelector('#appContent'),
+    authForm: document.querySelector('#authForm'),
+    authMessage: document.querySelector('#authMessage'),
+    userPill: document.querySelector('#userPill'),
+    descriptionInput: document.querySelector('#descriptionInput'),
+    projectSelect: document.querySelector('#projectSelect'),
+    timerForm: document.querySelector('#timerForm'),
+    timerDisplay: document.querySelector('#timerDisplay'),
+    timerButton: document.querySelector('#timerButton'),
+    entriesList: document.querySelector('#entriesList'),
+    weekTotal: document.querySelector('#weekTotal'),
+    projectForm: document.querySelector('#projectForm'),
+    projectList: document.querySelector('#projectList'),
+    reportTotals: document.querySelector('#reportTotals'),
+    reportChart: document.querySelector('#reportChart'),
+    viewTitle: document.querySelector('.view-title'),
+};
+
+async function api(path, options = {}) {
+    const response = await fetch(path, {
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+        ...options,
+    });
+    let data = {};
+    try {
+        data = await response.json();
+    } catch (error) {
+        data = { error: 'The server did not return a valid JSON response.' };
+    }
+    if (!response.ok) {
+        throw new Error(data.error || 'Something went wrong.');
+    }
+    return data;
+}
+
+function formatSeconds(totalSeconds) {
+    const total = Math.max(0, Number(totalSeconds) || 0);
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const seconds = Math.floor(total % 60);
+    return [hours, minutes, seconds].map((part) => String(part).padStart(2, '0')).join(':');
+}
+
+function formatTime(dateString) {
+    return new Date(dateString.replace(' ', 'T')).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+}
+
+function initials(name) {
+    return name
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0].toUpperCase())
+        .join('');
+}
+
+function setView(view) {
+    state.activeView = view;
+    document.querySelectorAll('.nav-item').forEach((button) => {
+        button.classList.toggle('active', button.dataset.view === view);
+    });
+    document.querySelectorAll('.view').forEach((section) => section.classList.remove('active'));
+    document.querySelector(`#${view}View`).classList.add('active');
+    els.viewTitle.textContent = view === 'tracker' ? 'Time Tracker' : view[0].toUpperCase() + view.slice(1);
+    if (view === 'reports') {
+        loadReport();
+    }
+}
+
+function renderShell() {
+    const loggedIn = Boolean(state.user);
+    els.authPanel.classList.toggle('hidden', loggedIn);
+    els.appContent.classList.toggle('hidden', !loggedIn);
+    els.userPill.textContent = loggedIn ? initials(state.user.name) : '';
+}
+
+function renderProjects() {
+    els.projectSelect.innerHTML = state.projects
+        .map((project) => `<option value="${project.id}">${escapeHtml(project.name)}</option>`)
+        .join('');
+
+    if (state.projects.length === 0) {
+        els.projectSelect.innerHTML = '<option value="">Create a project first</option>';
+    }
+
+    els.projectList.innerHTML = state.projects.length
+        ? state.projects.map(projectRow).join('')
+        : '<div class="empty-state">No projects yet. Add your first project above.</div>';
+}
+
+function projectRow(project) {
+    return `
+        <form class="project-row" data-id="${project.id}">
+            <span class="project-dot" style="background:${project.color}"></span>
+            <input name="name" value="${escapeHtml(project.name)}" maxlength="120" required>
+            <input name="color" type="color" value="${project.color}">
+            <button class="small-button" type="submit">Save</button>
+            <button class="danger-button" data-delete-project="${project.id}" type="button">Delete</button>
+        </form>
+    `;
+}
+
+function renderEntries() {
+    state.runningEntry = state.entries.find((entry) => !entry.ended_at) || null;
+
+    if (state.runningEntry) {
+        els.timerButton.textContent = 'Stop';
+        els.timerButton.classList.add('stop');
+        els.descriptionInput.value = state.runningEntry.description || '';
+        els.projectSelect.value = state.runningEntry.project_id;
+    } else {
+        els.timerButton.textContent = 'Start';
+        els.timerButton.classList.remove('stop');
+    }
+
+    els.entriesList.innerHTML = state.entries.length
+        ? state.entries.map(entryRow).join('')
+        : '<div class="empty-state">No time entries yet. Pick a project and press Start.</div>';
+
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - 7);
+    const weekSeconds = state.entries
+        .filter((entry) => new Date(entry.started_at.replace(' ', 'T')) >= weekStart)
+        .reduce((sum, entry) => sum + Number(entry.seconds), 0);
+    els.weekTotal.textContent = `Week total: ${formatSeconds(weekSeconds)}`;
+    updateTimerDisplay();
+}
+
+function entryRow(entry) {
+    const end = entry.ended_at ? formatTime(entry.ended_at) : 'running';
+    const description = entry.description || 'No description';
+    return `
+        <article class="entry-row">
+            <div class="entry-description">${escapeHtml(description)}</div>
+            <div class="entry-project">
+                <span class="project-dot" style="background:${entry.project_color}"></span>
+                ${escapeHtml(entry.project_name)}
+            </div>
+            <div class="entry-time">${formatTime(entry.started_at)} - ${end}</div>
+            <div class="entry-duration">${formatSeconds(entry.seconds)}</div>
+        </article>
+    `;
+}
+
+async function loadAll() {
+    const [projects, entries] = await Promise.all([
+        api('../api/projects.php'),
+        api('../api/time_entries.php'),
+    ]);
+    state.projects = projects.projects;
+    state.entries = entries.entries;
+    renderProjects();
+    renderEntries();
+}
+
+async function loadReport() {
+    const data = await api('../api/reports.php');
+    state.report = data.projects;
+    renderReport();
+}
+
+function renderReport() {
+    els.reportTotals.innerHTML = state.report.length
+        ? state.report.map((project) => `
+            <div class="total-row">
+                <span class="project-dot" style="background:${project.color}"></span>
+                <strong>${escapeHtml(project.name)}</strong>
+                <span>${formatSeconds(project.seconds)}</span>
+            </div>
+        `).join('')
+        : '<div class="empty-state">No project data yet.</div>';
+
+    drawChart();
+}
+
+function drawChart() {
+    const canvas = els.reportChart;
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    const padding = 46;
+    const chartWidth = width - padding * 2;
+    const chartHeight = height - padding * 2;
+    const maxSeconds = Math.max(...state.report.map((project) => Number(project.seconds)), 1);
+
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+    ctx.strokeStyle = '#dfe7ef';
+    ctx.lineWidth = 1;
+
+    for (let i = 0; i <= 4; i += 1) {
+        const y = padding + (chartHeight / 4) * i;
+        ctx.beginPath();
+        ctx.moveTo(padding, y);
+        ctx.lineTo(width - padding, y);
+        ctx.stroke();
+    }
+
+    if (!state.report.length) {
+        ctx.fillStyle = '#748292';
+        ctx.font = '18px Arial';
+        ctx.fillText('No data yet', padding, height / 2);
+        return;
+    }
+
+    const gap = 18;
+    const barWidth = Math.max(36, (chartWidth - gap * (state.report.length - 1)) / state.report.length);
+
+    state.report.forEach((project, index) => {
+        const seconds = Number(project.seconds);
+        const barHeight = (seconds / maxSeconds) * (chartHeight - 32);
+        const x = padding + index * (barWidth + gap);
+        const y = padding + chartHeight - barHeight;
+
+        ctx.fillStyle = project.color;
+        ctx.fillRect(x, y, barWidth, barHeight);
+
+        ctx.fillStyle = '#25313d';
+        ctx.font = '14px Arial';
+        ctx.fillText(formatSeconds(seconds), x, y - 8);
+        ctx.fillStyle = '#748292';
+        ctx.fillText(project.name.slice(0, 14), x, height - 18);
+    });
+}
+
+function updateTimerDisplay() {
+    if (!state.runningEntry) {
+        els.timerDisplay.textContent = '00:00:00';
+        return;
+    }
+
+    const started = new Date(state.runningEntry.started_at.replace(' ', 'T'));
+    els.timerDisplay.textContent = formatSeconds((Date.now() - started.getTime()) / 1000);
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+}
+
+document.querySelectorAll('.auth-tab').forEach((button) => {
+    button.addEventListener('click', () => {
+        state.authMode = button.dataset.mode;
+        document.querySelectorAll('.auth-tab').forEach((tab) => tab.classList.toggle('active', tab === button));
+        document.querySelectorAll('.register-only').forEach((item) => {
+            item.classList.toggle('hidden', state.authMode !== 'register');
+        });
+        els.authMessage.textContent = '';
+    });
+});
+
+document.querySelectorAll('.nav-item').forEach((button) => {
+    button.addEventListener('click', () => setView(button.dataset.view));
+});
+
+els.authForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    els.authMessage.textContent = '';
+    const body = Object.fromEntries(new FormData(els.authForm));
+    try {
+        const data = await api(`../api/auth.php?action=${state.authMode}`, {
+            method: 'POST',
+            body: JSON.stringify(body),
+        });
+        state.user = data.user;
+        renderShell();
+        await loadAll();
+    } catch (error) {
+        els.authMessage.textContent = error.message;
+    }
+});
+
+document.querySelector('.logout-button').addEventListener('click', async () => {
+    await api('../api/auth.php?action=logout', { method: 'POST', body: '{}' });
+    state.user = null;
+    state.projects = [];
+    state.entries = [];
+    renderShell();
+});
+
+els.timerForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (state.runningEntry) {
+        await api('../api/time_entries.php', {
+            method: 'PATCH',
+            body: JSON.stringify({ id: state.runningEntry.id, action: 'stop' }),
+        });
+    } else {
+        await api('../api/time_entries.php', {
+            method: 'POST',
+            body: JSON.stringify({
+                project_id: els.projectSelect.value,
+                description: els.descriptionInput.value,
+            }),
+        });
+    }
+    await loadAll();
+});
+
+els.projectForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const body = Object.fromEntries(new FormData(els.projectForm));
+    await api('../api/projects.php', { method: 'POST', body: JSON.stringify(body) });
+    els.projectForm.reset();
+    els.projectForm.elements.color.value = '#2563eb';
+    await loadAll();
+});
+
+els.projectList.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const form = event.target;
+    const body = Object.fromEntries(new FormData(form));
+    body.id = form.dataset.id;
+    await api('../api/projects.php', { method: 'PATCH', body: JSON.stringify(body) });
+    await loadAll();
+});
+
+els.projectList.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-delete-project]');
+    if (!button) {
+        return;
+    }
+    if (!confirm('Delete this project and its time entries?')) {
+        return;
+    }
+    await api('../api/projects.php', {
+        method: 'DELETE',
+        body: JSON.stringify({ id: button.dataset.deleteProject }),
+    });
+    await loadAll();
+});
+
+setInterval(updateTimerDisplay, 1000);
+
+(async function init() {
+    document.querySelectorAll('.register-only').forEach((item) => item.classList.add('hidden'));
+    try {
+        const data = await api('../api/auth.php?action=me');
+        state.user = data.user;
+        renderShell();
+        if (state.user) {
+            await loadAll();
+        }
+    } catch (error) {
+        state.user = null;
+        renderShell();
+        els.authMessage.textContent = 'Check the MySQL setup, then refresh this page.';
+    }
+})();

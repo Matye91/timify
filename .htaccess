@@ -1,0 +1,14 @@
+DirectoryIndex index.php
+Options -Indexes
+
+RedirectMatch 403 ^/(config|database|\.git|\.agents)(/|$)
+
+<FilesMatch "^(README\.md|\.htaccess.*)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
