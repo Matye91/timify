@@ -8,13 +8,15 @@ session_start();
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Timify</title>
-    <link rel="stylesheet" href="assets/styles.css">
+    <link rel="icon" type="image/svg+xml" href="assets/images/timify-mark.svg">
+    <link rel="apple-touch-icon" href="assets/images/timify-mark.svg">
+    <link rel="stylesheet" href="assets/styles.css?v=20260629-entry-layout">
 </head>
 <body>
     <main class="app-shell">
         <aside class="sidebar">
             <div class="brand">
-                <span class="brand-mark">T</span>
+                <img class="brand-mark" src="assets/images/timify-mark.svg" alt="Timify">
                 <strong>Timify</strong>
             </div>
             <nav class="nav">
@@ -96,6 +98,6 @@ session_start();
             </div>
         </section>
     </main>
-    <script src="assets/app.js"></script>
+    <script src="assets/app.js?v=20260629-entry-edit"></script>
 </body>
 </html>

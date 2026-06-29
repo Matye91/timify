@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Timify</title>
+  <rect width="64" height="64" rx="14" fill="#0ea5e9"/>
+  <path fill="#ffffff" d="M18 16h28v7H35.5v25h-7V23H18z"/>
+  <path fill="#bfefff" d="M42.5 13.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Zm7 8.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5Z"/>
+</svg>

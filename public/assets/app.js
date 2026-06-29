@@ -4,6 +4,11 @@ const state = {
     entries: [],
     report: [],
     runningEntry: null,
+    runningEntryTimer: {
+        id: null,
+        baseSeconds: 0,
+        syncedAt: performance.now(),
+    },
     authMode: 'login',
     activeView: 'tracker',
 };
@@ -55,10 +60,41 @@ function formatSeconds(totalSeconds) {
 }
 
 function formatTime(dateString) {
-    return new Date(dateString.replace(' ', 'T')).toLocaleTimeString([], {
+    const date = new Date(`${String(dateString).replace(' ', 'T')}Z`);
+    if (Number.isNaN(date.getTime())) {
+        return '';
+    }
+    return date.toLocaleTimeString([], {
         hour: '2-digit',
         minute: '2-digit',
     });
+}
+
+function utcToLocalInput(dateString) {
+    if (!dateString) {
+        return '';
+    }
+
+    const date = new Date(`${String(dateString).replace(' ', 'T')}Z`);
+    if (Number.isNaN(date.getTime())) {
+        return '';
+    }
+
+    const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 16);
+}
+
+function localInputToUtcSql(value) {
+    if (!value) {
+        return null;
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return null;
+    }
+
+    return date.toISOString().slice(0, 19).replace('T', ' ');
 }
 
 function initials(name) {
@@ -120,6 +156,20 @@ function renderEntries() {
     state.runningEntry = state.entries.find((entry) => !entry.ended_at) || null;
 
     if (state.runningEntry) {
+        state.runningEntryTimer = {
+            id: state.runningEntry.id,
+            baseSeconds: Number(state.runningEntry.seconds) || 0,
+            syncedAt: performance.now(),
+        };
+    } else {
+        state.runningEntryTimer = {
+            id: null,
+            baseSeconds: 0,
+            syncedAt: performance.now(),
+        };
+    }
+
+    if (state.runningEntry) {
         els.timerButton.textContent = 'Stop';
         els.timerButton.classList.add('stop');
         els.descriptionInput.value = state.runningEntry.description || '';
@@ -136,25 +186,36 @@ function renderEntries() {
     const weekStart = new Date();
     weekStart.setDate(weekStart.getDate() - 7);
     const weekSeconds = state.entries
-        .filter((entry) => new Date(entry.started_at.replace(' ', 'T')) >= weekStart)
+        .filter((entry) => {
+            const datePart = String(entry.started_at).slice(0, 10);
+            return datePart && new Date(`${datePart}T00:00:00`) >= weekStart;
+        })
         .reduce((sum, entry) => sum + Number(entry.seconds), 0);
     els.weekTotal.textContent = `Week total: ${formatSeconds(weekSeconds)}`;
     updateTimerDisplay();
 }
 
 function entryRow(entry) {
-    const end = entry.ended_at ? formatTime(entry.ended_at) : 'running';
-    const description = entry.description || 'No description';
+    const options = state.projects.map((project) => `
+        <option value="${project.id}" ${Number(project.id) === Number(entry.project_id) ? 'selected' : ''}>
+            ${escapeHtml(project.name)}
+        </option>
+    `).join('');
+
     return `
-        <article class="entry-row">
-            <div class="entry-description">${escapeHtml(description)}</div>
-            <div class="entry-project">
-                <span class="project-dot" style="background:${entry.project_color}"></span>
-                ${escapeHtml(entry.project_name)}
+        <form class="entry-row" data-id="${entry.id}">
+            <input name="description" value="${escapeHtml(entry.description || '')}" maxlength="500" placeholder="No description">
+            <select name="project_id" required>${options}</select>
+            <div class="entry-time-edit">
+                <input name="started_at" type="datetime-local" value="${utcToLocalInput(entry.started_at)}" required>
+                <input name="ended_at" type="datetime-local" value="${utcToLocalInput(entry.ended_at)}" aria-label="End time">
             </div>
-            <div class="entry-time">${formatTime(entry.started_at)} - ${end}</div>
             <div class="entry-duration">${formatSeconds(entry.seconds)}</div>
-        </article>
+            <div class="entry-actions">
+                <button class="small-button" type="submit">Save</button>
+                <button class="danger-button" data-delete-entry="${entry.id}" type="button">Delete</button>
+            </div>
+        </form>
     `;
 }
 
@@ -246,8 +307,9 @@ function updateTimerDisplay() {
         return;
     }
 
-    const started = new Date(state.runningEntry.started_at.replace(' ', 'T'));
-    els.timerDisplay.textContent = formatSeconds((Date.now() - started.getTime()) / 1000);
+    const timer = state.runningEntryTimer;
+    const clientSeconds = (performance.now() - timer.syncedAt) / 1000;
+    els.timerDisplay.textContent = formatSeconds(timer.baseSeconds + clientSeconds);
 }
 
 function escapeHtml(value) {
@@ -347,6 +409,39 @@ els.projectList.addEventListener('click', async (event) => {
     await api('../api/projects.php', {
         method: 'DELETE',
         body: JSON.stringify({ id: button.dataset.deleteProject }),
+    });
+    await loadAll();
+});
+
+els.entriesList.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const form = event.target;
+    const body = Object.fromEntries(new FormData(form));
+    body.id = form.dataset.id;
+    body.action = 'update';
+    body.started_at = localInputToUtcSql(body.started_at);
+    body.ended_at = localInputToUtcSql(body.ended_at);
+
+    await api('../api/time_entries.php', {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+    });
+    await loadAll();
+});
+
+els.entriesList.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-delete-entry]');
+    if (!button) {
+        return;
+    }
+
+    if (!confirm('Delete this time entry?')) {
+        return;
+    }
+
+    await api('../api/time_entries.php', {
+        method: 'DELETE',
+        body: JSON.stringify({ id: button.dataset.deleteEntry }),
     });
     await loadAll();
 });

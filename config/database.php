@@ -6,6 +6,7 @@ const DB_NAME = 'u162880db9';
 const DB_USER = 'u162880db9';
 const DB_PASS = '0.w6o4os8rbz';
 const DB_CHARSET = 'utf8mb4';
+const DB_TIMEZONE = '+00:00';
 
 function db(): PDO
 {
@@ -27,6 +28,8 @@ function db(): PDO
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES => false,
     ]);
+
+    $pdo->prepare('SET time_zone = ?')->execute([DB_TIMEZONE]);
 
     return $pdo;
 }

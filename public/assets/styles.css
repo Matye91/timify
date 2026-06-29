@@ -55,14 +55,9 @@ select {
 }
 
 .brand-mark {
-    align-items: center;
-    background: var(--blue);
     border-radius: 8px;
-    color: #fff;
-    display: inline-flex;
-    font-weight: 700;
+    display: block;
     height: 38px;
-    justify-content: center;
     width: 38px;
 }
 
@@ -198,7 +193,7 @@ select {
     color: var(--text);
     min-height: 42px;
     padding: 0 12px;
-    width: 100%;
+    width: 102%;
 }
 
 .primary-button,
@@ -289,7 +284,7 @@ select {
 }
 
 .entry-row {
-    grid-template-columns: 1fr 210px 110px 80px;
+    grid-template-columns: minmax(180px, 1.4fr) minmax(170px, 0.7fr) minmax(360px, 1fr) 100px 150px;
 }
 
 .project-row {
@@ -302,23 +297,24 @@ select {
     width: 11px;
 }
 
-.entry-description {
-    color: var(--muted);
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.entry-project {
-    align-items: center;
-    display: flex;
+.entry-time-edit,
+.entry-actions {
+    display: grid;
     gap: 8px;
 }
 
-.entry-time {
-    color: var(--muted);
-    font-size: 14px;
+.entry-time-edit {
+    grid-template-columns: repeat(2, minmax(170px, 1fr));
+    min-width: 0;
+}
+
+.entry-actions {
+    grid-template-columns: 1fr 1fr;
+}
+
+.entry-row input,
+.entry-row select {
+    min-width: 0;
 }
 
 .entry-duration {
@@ -370,6 +366,21 @@ select {
     text-align: center;
 }
 
+@media (max-width: 1280px) {
+    .entry-row {
+        grid-template-columns: minmax(180px, 1fr) minmax(170px, 0.7fr) minmax(360px, 1fr);
+    }
+
+    .entry-duration {
+        text-align: left;
+    }
+
+    .entry-actions {
+        grid-column: span 3;
+        grid-template-columns: 110px 110px;
+    }
+}
+
 @media (max-width: 900px) {
     .app-shell,
     .auth-panel,
@@ -391,5 +402,14 @@ select {
 
     .entry-duration {
         text-align: left;
+    }
+
+    .entry-time-edit,
+    .entry-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .entry-actions {
+        grid-column: auto;
     }
 }

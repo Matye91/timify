@@ -8,15 +8,37 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 function stop_running_entry(int $userId): void
 {
-    $stmt = db()->prepare('UPDATE time_entries SET ended_at = NOW() WHERE user_id = ? AND ended_at IS NULL');
+    $stmt = db()->prepare('UPDATE time_entries SET ended_at = UTC_TIMESTAMP() WHERE user_id = ? AND ended_at IS NULL');
     $stmt->execute([$userId]);
+}
+
+function parse_utc_datetime(?string $value, string $field, bool $required = true): ?string
+{
+    $value = trim((string) $value);
+
+    if ($value === '') {
+        if ($required) {
+            json_response(['error' => sprintf('%s is required.', $field)], 422);
+        }
+
+        return null;
+    }
+
+    $date = DateTimeImmutable::createFromFormat('!Y-m-d H:i:s', $value, new DateTimeZone('UTC'));
+    $errors = DateTimeImmutable::getLastErrors();
+
+    if (!$date || ($errors !== false && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))) {
+        json_response(['error' => sprintf('%s must be a valid date and time.', $field)], 422);
+    }
+
+    return $date->format('Y-m-d H:i:s');
 }
 
 if ($method === 'GET') {
     $stmt = db()->prepare(
         'SELECT te.id, te.project_id, te.description, te.started_at, te.ended_at,
                 p.name AS project_name, p.color AS project_color,
-                TIMESTAMPDIFF(SECOND, te.started_at, COALESCE(te.ended_at, NOW())) AS seconds
+                TIMESTAMPDIFF(SECOND, te.started_at, COALESCE(te.ended_at, UTC_TIMESTAMP())) AS seconds
          FROM time_entries te
          JOIN projects p ON p.id = te.project_id
          WHERE te.user_id = ?
@@ -47,7 +69,7 @@ if ($method === 'POST') {
 
     stop_running_entry($userId);
 
-    $stmt = db()->prepare('INSERT INTO time_entries (user_id, project_id, description, started_at) VALUES (?, ?, ?, NOW())');
+    $stmt = db()->prepare('INSERT INTO time_entries (user_id, project_id, description, started_at) VALUES (?, ?, ?, UTC_TIMESTAMP())');
     $stmt->execute([$userId, $projectId, $description !== '' ? $description : null]);
     json_response(['id' => (int) db()->lastInsertId()], 201);
 }
@@ -61,7 +83,7 @@ if ($method === 'PATCH') {
     }
 
     if ($action === 'stop') {
-        $stmt = db()->prepare('UPDATE time_entries SET ended_at = NOW() WHERE id = ? AND user_id = ? AND ended_at IS NULL');
+        $stmt = db()->prepare('UPDATE time_entries SET ended_at = UTC_TIMESTAMP() WHERE id = ? AND user_id = ? AND ended_at IS NULL');
         $stmt->execute([$id, $userId]);
         json_response(['ok' => true]);
     }
@@ -69,6 +91,8 @@ if ($method === 'PATCH') {
     if ($action === 'update') {
         $projectId = (int) ($data['project_id'] ?? 0);
         $description = trim((string) ($data['description'] ?? ''));
+        $startedAt = parse_utc_datetime($data['started_at'] ?? null, 'Start time');
+        $endedAt = parse_utc_datetime($data['ended_at'] ?? null, 'End time', false);
 
         if ($projectId <= 0) {
             json_response(['error' => 'Please select a project.'], 422);
@@ -76,13 +100,22 @@ if ($method === 'PATCH') {
 
         validate_length($description, 'Description', 500);
 
+        if ($endedAt !== null && strtotime($endedAt) < strtotime($startedAt)) {
+            json_response(['error' => 'End time must be after start time.'], 422);
+        }
+
+        $projectStmt = db()->prepare('SELECT id FROM projects WHERE id = ? AND user_id = ?');
+        $projectStmt->execute([$projectId, $userId]);
+        if (!$projectStmt->fetch()) {
+            json_response(['error' => 'Project not found.'], 404);
+        }
+
         $stmt = db()->prepare(
-            'UPDATE time_entries te
-             JOIN projects p ON p.id = ? AND p.user_id = te.user_id
-             SET te.project_id = ?, te.description = ?
-             WHERE te.id = ? AND te.user_id = ?'
+            'UPDATE time_entries
+             SET project_id = ?, description = ?, started_at = ?, ended_at = ?
+             WHERE id = ? AND user_id = ?'
         );
-        $stmt->execute([$projectId, $projectId, $description !== '' ? $description : null, $id, $userId]);
+        $stmt->execute([$projectId, $description !== '' ? $description : null, $startedAt, $endedAt, $id, $userId]);
         json_response(['ok' => $stmt->rowCount() > 0]);
     }
 }
