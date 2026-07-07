@@ -338,6 +338,34 @@ select {
     grid-template-columns: minmax(0, 1fr) 320px;
 }
 
+.report-toolbar {
+    align-items: center;
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 18px;
+}
+
+.icon-button {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: var(--text);
+    cursor: pointer;
+    font-weight: 700;
+    height: 40px;
+    width: 40px;
+}
+
+.icon-button:hover {
+    background: #e4edf5;
+}
+
+#reportWeekLabel {
+    min-width: 210px;
+    text-align: center;
+}
+
 .chart-panel,
 .totals-panel {
     padding: 18px;
@@ -364,6 +392,10 @@ select {
     color: var(--muted);
     padding: 28px;
     text-align: center;
+}
+
+small {
+    font-size: 0.75rem;
 }
 
 @media (max-width: 1280px) {

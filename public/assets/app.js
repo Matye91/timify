@@ -3,6 +3,7 @@ const state = {
     projects: [],
     entries: [],
     report: [],
+    reportWeekStart: startOfWeek(new Date()),
     runningEntry: null,
     runningEntryTimer: {
         id: null,
@@ -11,6 +12,7 @@ const state = {
     },
     authMode: 'login',
     activeView: 'tracker',
+    reportNavigationBound: false,
 };
 
 const els = {
@@ -30,6 +32,9 @@ const els = {
     projectList: document.querySelector('#projectList'),
     reportTotals: document.querySelector('#reportTotals'),
     reportChart: document.querySelector('#reportChart'),
+    reportWeekLabel: document.querySelector('#reportWeekLabel'),
+    previousReportWeek: document.querySelector('#previousReportWeek'),
+    nextReportWeek: document.querySelector('#nextReportWeek'),
     viewTitle: document.querySelector('.view-title'),
 };
 
@@ -68,6 +73,72 @@ function formatTime(dateString) {
         hour: '2-digit',
         minute: '2-digit',
     });
+}
+
+function startOfWeek(date) {
+    const weekStart = new Date(date);
+    weekStart.setHours(0, 0, 0, 0);
+    const day = weekStart.getDay();
+    const mondayOffset = day === 0 ? -6 : 1 - day;
+    weekStart.setDate(weekStart.getDate() + mondayOffset);
+    return weekStart;
+}
+
+function addDays(date, days) {
+    const nextDate = new Date(date);
+    nextDate.setDate(nextDate.getDate() + days);
+    return nextDate;
+}
+
+function toUtcSql(date) {
+    return date.toISOString().slice(0, 19).replace('T', ' ');
+}
+
+function formatWeekRange(start) {
+    const end = addDays(start, 6);
+    const sameYear = start.getFullYear() === end.getFullYear();
+    const options = sameYear
+        ? { month: 'short', day: 'numeric' }
+        : { month: 'short', day: 'numeric', year: 'numeric' };
+    const startText = start.toLocaleDateString([], options);
+    const endText = end.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+    return `${startText} - ${endText}`;
+}
+
+function ensureReportControls() {
+    if (!els.reportWeekLabel || !els.previousReportWeek || !els.nextReportWeek) {
+        const reportGrid = document.querySelector('.report-grid');
+        if (!reportGrid || !reportGrid.parentElement) {
+            return;
+        }
+
+        const toolbar = document.createElement('div');
+        toolbar.className = 'report-toolbar';
+        toolbar.innerHTML = `
+            <button class="icon-button" id="previousReportWeek" type="button" aria-label="Previous week">&lt;</button>
+            <strong id="reportWeekLabel">This week</strong>
+            <button class="icon-button" id="nextReportWeek" type="button" aria-label="Next week">&gt;</button>
+        `;
+        reportGrid.parentElement.insertBefore(toolbar, reportGrid);
+
+        els.reportWeekLabel = toolbar.querySelector('#reportWeekLabel');
+        els.previousReportWeek = toolbar.querySelector('#previousReportWeek');
+        els.nextReportWeek = toolbar.querySelector('#nextReportWeek');
+    }
+
+    if (!state.reportNavigationBound && els.previousReportWeek && els.nextReportWeek) {
+        els.previousReportWeek.addEventListener('click', () => {
+            state.reportWeekStart = addDays(state.reportWeekStart, -7);
+            loadReport();
+        });
+
+        els.nextReportWeek.addEventListener('click', () => {
+            state.reportWeekStart = addDays(state.reportWeekStart, 7);
+            loadReport();
+        });
+
+        state.reportNavigationBound = true;
+    }
 }
 
 function utcToLocalInput(dateString) {
@@ -231,12 +302,23 @@ async function loadAll() {
 }
 
 async function loadReport() {
-    const data = await api('../api/reports.php');
+    ensureReportControls();
+    const weekStart = state.reportWeekStart;
+    const weekEnd = addDays(weekStart, 7);
+    const params = new URLSearchParams({
+        start: toUtcSql(weekStart),
+        end: toUtcSql(weekEnd),
+    });
+    const data = await api(`../api/reports.php?${params.toString()}`);
     state.report = data.projects;
     renderReport();
 }
 
 function renderReport() {
+    if (els.reportWeekLabel) {
+        els.reportWeekLabel.textContent = formatWeekRange(state.reportWeekStart);
+    }
+
     els.reportTotals.innerHTML = state.report.length
         ? state.report.map((project) => `
             <div class="total-row">
@@ -335,6 +417,8 @@ document.querySelectorAll('.auth-tab').forEach((button) => {
 document.querySelectorAll('.nav-item').forEach((button) => {
     button.addEventListener('click', () => setView(button.dataset.view));
 });
+
+ensureReportControls();
 
 els.authForm.addEventListener('submit', async (event) => {
     event.preventDefault();

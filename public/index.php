@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
-session_start();
+require_once __DIR__ . '/../config/session.php';
+start_app_session();
 ?>
 <!doctype html>
 <html lang="en">
@@ -10,7 +11,7 @@ session_start();
     <title>Timify</title>
     <link rel="icon" type="image/svg+xml" href="assets/images/timify-mark.svg">
     <link rel="apple-touch-icon" href="assets/images/timify-mark.svg">
-    <link rel="stylesheet" href="assets/styles.css?v=20260629-entry-layout">
+    <link rel="stylesheet" href="assets/styles.css?v=20260707-weekly-reports-2">
 </head>
 <body>
     <main class="app-shell">
@@ -25,6 +26,7 @@ session_start();
                 <button class="nav-item" data-view="reports" type="button">Reports</button>
             </nav>
             <button class="ghost-button logout-button" type="button">Logout</button>
+            <div><small>sponsored by <a href="https://www.garden-shop.at/">Garten Jünger - Dein Online Gartenshop</a></small></div>
         </aside>
 
         <section class="workspace">
@@ -88,6 +90,11 @@ session_start();
                 </section>
 
                 <section class="view" id="reportsView">
+                    <div class="report-toolbar">
+                        <button class="icon-button" id="previousReportWeek" type="button" aria-label="Previous week">&lt;</button>
+                        <strong id="reportWeekLabel">This week</strong>
+                        <button class="icon-button" id="nextReportWeek" type="button" aria-label="Next week">&gt;</button>
+                    </div>
                     <div class="report-grid">
                         <div class="chart-panel">
                             <canvas id="reportChart" width="900" height="360"></canvas>
@@ -98,6 +105,6 @@ session_start();
             </div>
         </section>
     </main>
-    <script src="assets/app.js?v=20260629-entry-edit"></script>
+    <script src="assets/app.js?v=20260707-weekly-reports-2"></script>
 </body>
 </html>

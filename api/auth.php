@@ -12,6 +12,7 @@ if ($action === 'me' && $method === 'GET') {
 
 if ($action === 'logout' && $method === 'POST') {
     $_SESSION = [];
+    clear_app_session_cookie();
     session_destroy();
     json_response(['ok' => true]);
 }
@@ -41,6 +42,7 @@ if ($action === 'register' && $method === 'POST') {
     try {
         $stmt = db()->prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)');
         $stmt->execute([$name, $email, password_hash($password, PASSWORD_DEFAULT)]);
+        session_regenerate_id(true);
         $_SESSION['user_id'] = (int) db()->lastInsertId();
 
         $projectStmt = db()->prepare('INSERT INTO projects (user_id, name, color) VALUES (?, ?, ?)');
@@ -73,6 +75,7 @@ if ($action === 'login' && $method === 'POST') {
         json_response(['error' => 'Invalid email or password.'], 401);
     }
 
+    session_regenerate_id(true);
     $_SESSION['user_id'] = (int) $user['id'];
     json_response(['user' => current_user()]);
 }

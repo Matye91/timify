@@ -2,8 +2,9 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/database.php';
+require_once __DIR__ . '/session.php';
 
-session_start();
+start_app_session();
 
 header('Content-Type: application/json; charset=utf-8');
 
